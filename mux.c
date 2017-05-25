@@ -37,7 +37,7 @@ void sysUsecTime(char *time_buf)
     gettimeofday(&tv, &tz);
     p = localtime(&tv.tv_sec);
 
-    sprintf(time_buf,"\n[%02d:%02d:%02d:%06ld] ", p->tm_hour, p->tm_min, p->tm_sec, tv.tv_usec);
+    sprintf(time_buf,"\n\033[32m[%02d:%02d:%02d:%06ld]\033[0m", p->tm_hour, p->tm_min, p->tm_sec, tv.tv_usec);
 }
 
 
@@ -335,7 +335,8 @@ int mux_loop(struct ios_ops *ios, int millisecond)
 	fd_set ready;		/* used for select */
 	int i = 0, len;		/* used in the multiplex loop */
 	unsigned char buf[BUFSIZE];
-	unsigned char time_buf[25];
+	unsigned char time_buf[35];
+	unsigned char input_arrow = 0;
 
 	while (1) {
 		FD_ZERO(&ready);
@@ -357,6 +358,12 @@ int mux_loop(struct ios_ops *ios, int millisecond)
 				handle_receive_buf(ios, buf, len);
 			}
 			else {
+				// if input is arrow
+				if (input_arrow == 1) {
+					buf[0] = '\n';
+					input_arrow = 0;
+				}
+
 				buf[len] = '\0';
 				sysUsecTime(time_buf);
 				strrpl(buf, "\n", time_buf);
@@ -371,6 +378,9 @@ int mux_loop(struct ios_ops *ios, int millisecond)
 				return -errno;
 			if (i == 0)
 				return -EINVAL;
+
+			// if input is arrow
+			if (millisecond && 91 == buf[1]) input_arrow = 1;
 
 			cook_buf(ios, buf, i);
 		}
