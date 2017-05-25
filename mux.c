@@ -20,8 +20,58 @@
 #include "microcom.h"
 #include <arpa/telnet.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <time.h>
+#include <sys/time.h>
+#include <string.h>
+
 
 #define BUFSIZE 1024
+
+void sysUsecTime(char *time_buf)
+{
+    struct tm       *p;
+    struct timeval  tv;
+    struct timezone tz;
+
+    gettimeofday(&tv, &tz);
+    p = localtime(&tv.tv_sec);
+
+    sprintf(time_buf,"\n[%02d:%02d:%02d:%06ld] ", p->tm_hour, p->tm_min, p->tm_sec, tv.tv_usec);
+}
+
+
+void strrpl(char *originalString, char *key, char *swap)
+{
+	int lengthOfOriginalString, lengthOfKey, lengthOfSwap, i, j , flag;
+	char tmp[1000];
+
+	//获取各个字符串的长度
+	lengthOfOriginalString = strlen(originalString);
+	lengthOfKey = strlen(key);
+	lengthOfSwap = strlen(swap);
+
+	for( i = 0; i <= lengthOfOriginalString - lengthOfKey; i++){
+		flag = 1;
+		//搜索key
+		for(j  = 0; j < lengthOfKey; j ++){
+			if(originalString[i + j] != key[j]){
+				flag = 0;
+				break;
+			}
+		}
+		//如果搜索成功，则进行替换
+		if(flag){
+			strcpy(tmp, originalString);
+			strcpy(&tmp[i], swap);
+			strcpy(&tmp[i + lengthOfSwap], &originalString[i  + lengthOfKey]);
+			strcpy(originalString, tmp);
+			i += lengthOfSwap - 1;
+			lengthOfOriginalString = strlen(originalString);
+		}
+	}
+}
+
 
 static int do_com_port_option(unsigned char *buf, int len)
 {
@@ -280,11 +330,12 @@ int logfile_open(const char *path)
 }
 
 /* main program loop */
-int mux_loop(struct ios_ops *ios)
+int mux_loop(struct ios_ops *ios, int millisecond)
 {
 	fd_set ready;		/* used for select */
 	int i = 0, len;		/* used in the multiplex loop */
 	unsigned char buf[BUFSIZE];
+	unsigned char time_buf[25];
 
 	while (1) {
 		FD_ZERO(&ready);
@@ -302,7 +353,15 @@ int mux_loop(struct ios_ops *ios)
 			if (len == 0)
 				return -EINVAL;
 
-			handle_receive_buf(ios, buf, len);
+			if (!millisecond) {
+				handle_receive_buf(ios, buf, len);
+			}
+			else {
+				buf[len] = '\0';
+				sysUsecTime(time_buf);
+				strrpl(buf, "\n", time_buf);
+				handle_receive_buf(ios, buf, strlen(buf));
+			}
 		}
 
 		if (!listenonly && FD_ISSET(STDIN_FILENO, &ready)) {

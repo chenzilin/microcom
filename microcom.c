@@ -183,6 +183,7 @@ void main_usage(int exitcode, char *str, char *dev)
 		"    -f, --force                          ignore existing lock file\n"
 		"    -d, --debug                          output debugging info\n"
 		"    -l, --logfile=<logfile>              log output to <logfile>\n"
+		"    -m, --millisecond                    print current localtime accurate to millisecond\n"
 		"    -o, --listenonly                     Do not modify local terminal, do not send input\n"
 		"                                         from stdin\n"
 		"    -a,  --answerback=<str>              specify the answerback string sent as response to\n"
@@ -209,6 +210,7 @@ int main(int argc, char *argv[])
 	char *interfaceid = NULL;
 	char *device = DEFAULT_DEVICE;
 	char *logfile = NULL;
+	int millisecond = 0;
 
 	struct option long_options[] = {
 		{ "help", no_argument, 0, 'h' },
@@ -219,13 +221,14 @@ int main(int argc, char *argv[])
 		{ "debug", no_argument, 0, 'd' },
 		{ "force", no_argument, 0, 'f' },
 		{ "logfile", required_argument, 0, 'l'},
+		{ "millisecond", no_argument, 0, 'm' },
 		{ "listenonly", no_argument, 0, 'o'},
 		{ "answerback", required_argument, 0, 'a'},
 		{ "version", no_argument, 0, 'v' },
 		{ 0, 0, 0, 0},
 	};
 
-	while ((opt = getopt_long(argc, argv, "hp:s:t:c:dfl:oi:a:v", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hp:s:t:c:dfl:moi:a:v", long_options, NULL)) != -1) {
 		switch (opt) {
 			case '?':
 				main_usage(1, "", "");
@@ -259,6 +262,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'l':
 				logfile = optarg;
+				break;
+			case 'm':
+				millisecond = 1;
 				break;
 			case 'o':
 				listenonly = 1;
@@ -327,7 +333,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* run the main program loop */
-	ret = mux_loop(ios);
+	ret = mux_loop(ios, millisecond);
 	if (ret)
 		fprintf(stderr, "%s\n", strerror(-ret));
 
